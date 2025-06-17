@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Video Downloader</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="../static/style.css" type="text/css" media="all" />
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>🎥 Video Downloader</h1>
+      <input type="text" id="video-url" placeholder="Paste your video URL..." />
+      <button id="download-button">⬇️ Download</button>
+
+      <p id="status">Status: Waiting</p>
+      <p id="filename"></p>
+    </div>
+  </div>
+  <footer>
+    <h2 class="contract">Contracts</h2>
+        <div class="container">
+          <a href="https://www.facebook.com/share/1B1iPJgJvW/" target="_blank">
+  <div class="icon fb">
+    <img src="icons/10462343.png" alt="Facebook Icon" />
+  </div>
+</a>
+<a href="https://youtube.com/@mhsifat?si=jcX8M1PZZDXx7Wr2">
+  <div class="icon yt">
+    <img src="icons/10462337.png" alt="">
+  </div>
+</a>
+          <a href="https://www.instagram.com/mahmudulhasan.sifat.90?igsh=MTNiajZ0Mmd6MjVqaQ==">
+          <div class="icon instagram">
+            <img src="icons/10462345.png" alt="" />
+          </div>
+          </a>
+        </div>
+  </footer>
+
+  <script>
+    const status = document.getElementById('status');
+    const filenameText = document.getElementById('filename');
+    let pollingInterval;
+
+    function startPolling() {
+      pollingInterval = setInterval(async () => {
+        const res = await fetch('/progress');
+        const data = await res.json();
+
+        status.textContent = `Status: ${data.status}`;
+        filenameText.textContent = data.filename ? `File: ${data.filename}` : '';
+
+        if (data.status === 'done' || data.status === 'error') {
+          clearInterval(pollingInterval);
+          if (data.status === 'error') {
+            status.textContent = `❌ Error: ${data.error}`;
+          }
+        }
+      }, 1000);
+    }
+
+    // Ripple effect and download trigger
+    const button = document.getElementById('download-button');
+    button.addEventListener('click', async (e) => {
+      const url = document.getElementById('video-url').value;
+      if (!url) {
+        status.textContent = '⚠️ Please enter a URL.';
+        return;
+      }
+
+      // Ripple animation
+      const ripple = document.createElement("span");
+      ripple.className = "ripple";
+      ripple.style.left = e.offsetX + "px";
+      ripple.style.top = e.offsetY + "px";
+      button.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+
+      status.textContent = '⏳ Downloading...';
+      filenameText.textContent = '';
+      startPolling();
+
+      try {
+        const response = await fetch('/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          clearInterval(pollingInterval);
+          status.textContent = `❌ Error: ${result.error}`;
+        }
+      } catch (error) {
+        clearInterval(pollingInterval);
+        status.textContent = `❌ Request failed: ${error.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
